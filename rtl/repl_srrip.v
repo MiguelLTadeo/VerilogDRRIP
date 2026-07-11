@@ -170,6 +170,24 @@ module repl_srrip #(
     input  wire [WAY_W-1:0]      fill_way_i,
     input  wire [INDEX_W-1:0]    fill_index_i,
 
+    // CONTRATO DE SEQUENCIAMENTO fill_en_i vs. novo victim_req_i no MESMO
+    // set (achado na revisao de follow-up da Fase 4, aplicavel tambem
+    // aqui por simetria estrutural com a race hit-vs-aging ja corrigida):
+    //   found_c/found_way_c usam valores PRE-borda de rrpv_mem. Se, no
+    //   mesmo ciclo em que a FSM crava victim_way_reg<=X para o set S,
+    //   fill_en_i TAMBEM mirar a via X do set S (fechando o despejo
+    //   ANTERIOR daquele set), e um NOVO victim_req_i para o MESMO set S
+    //   for aceito nesse exato ciclo (S_IDLE relendo victim_req_i), a
+    //   FSM pode cravar a via X de novo como vitima usando o valor
+    //   pre-borda ainda-RRPV_MAX, descartando a linha que acabou de ser
+    //   inserida sem nunca ter sido usada. AO CONTRARIO da race
+    //   hit-vs-aging, esta NAO E mascarada em hardware (nao ha
+    //   fill_targets_cur_set_c). Contrato exigido do integrador: nao
+    //   reemitir victim_req_i para o set S antes que o fill_en_i do
+    //   despejo ANTERIOR daquele set S tenha completado (fluxo
+    //   estritamente sequencial MISS->busca->fill por set, como
+    //   documentado no plano do projeto). Nao testado nesta fase.
+    //
     // ---- busca de vitima (handshake multi-ciclo por causa do aging) -------
     // protocolo:
     //   1) com victim_busy_o==0 (FSM ociosa), pulsar victim_req_i=1 por 1
