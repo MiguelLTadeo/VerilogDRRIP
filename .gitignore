@@ -1,0 +1,17 @@
+# ModelSim/Questa simulation artifacts
+work/
+transcript
+*.wlf
+vsim.wlf
+*.vstf
+modelsim.ini
+
+# Quartus artifacts
+*.qws
+db/
+incremental_db/
+output_files/
+greybox_tmp/
+
+# OS
+.DS_Store
