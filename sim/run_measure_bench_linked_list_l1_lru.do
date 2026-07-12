@@ -1,0 +1,18 @@
+# run_measure_bench_linked_list_l1_lru.do
+# GERADO por bench/gen_measure_wrappers.py -- Fase 9. NAO EDITAR A MAO.
+# Script do ModelSim: mede hit rate do benchmark 'linked_list' do Apendice A na
+# config de ENTREGA L1 com a politica LRU, via measure_harness.v.
+# Assume cwd = /home/miguel/verilog (raiz do projeto).
+#
+# Uso (a partir de /home/miguel/verilog):
+#   vsim -c -do sim/run_measure_bench_linked_list_l1_lru.do
+
+if {[file exists work]} {
+    vdel -lib work -all
+}
+
+vlib work
+vlog rtl/cache_datapath.v rtl/repl_lru_nway.v rtl/psel_dueling.v rtl/repl_drrip.v tb/measure_harness.v tb/measure_bench_linked_list_l1_lru_tb.v
+vsim -c work.measure_bench_linked_list_l1_lru_tb
+run -all
+quit -f

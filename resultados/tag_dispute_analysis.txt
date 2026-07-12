@@ -1,0 +1,34 @@
+Analise de disputa de via (tags distintas por set) -- Fase 9, revisao 3
+Config L1: ADDR_W=32 BLK_B=32 SETS=64 WAYS=2
+Config L2: ADDR_W=32 BLK_B=64 SETS=64 WAYS=8
+'sets_com_tags>WAYS' = piso minimo necessario (NAO suficiente sozinho -- ver
+insight central no cabecalho de bench/apendice_a_instrumented.c) para que a
+politica de substituicao tenha, em algum momento, mais candidatos vivos do
+que vias disponiveis naquele set.
+
+NOTA (revisao 3, achado Medio do rtl-analyst corrigido): a linked_list foi
+regerada com LL_CURSOR_B_OFFSET=NUM_NODES/2+8 (era NUM_NODES/2 puro, que se
+provou algebricamente TRAVADO no mesmo set que o cursor A o trace inteiro,
+nas duas configs -- ver DECISAO DE PROJETO #6 em
+bench/apendice_a_instrumented.c para a prova completa e a correcao). Os
+numeros de tags/set abaixo para linked_list NAO MUDAM em relacao a revisao
+anterior (32.00/16.00) -- isso e ESPERADO, nao um sinal de que o fix falhou:
+os 2 cursores percorrem a MESMA lista circular subjacente, entao o conjunto
+de tags que um set ve ao longo do trace inteiro e determinado por
+NUM_NODES/K (K=nodes-por-bloco), nao pelo offset de fase entre os cursores
+-- o offset muda QUANDO cada tag chega (o que afeta hit/miss), nao QUAIS
+tags chegam (o que essa metrica mede). A prova do fix e algebrica (ver
+codigo) + o resultado de hit rate real, documentado em
+resultados/hit_rate_comparativo.md: com a dessincronizacao real confirmada,
+o empate exato LRU==DRRIP em linked_list PERSISTE bit a bit (90112/8192 em
+L1, 94208/4096 em L2, identico a antes do fix), o que REFORCA a tese de
+"regime sem sensibilidade real" em vez de revelar uma divergencia oculta.
+
+streaming        L1   SETS= 64 WAYS= 2 BLK_B= 32 : max_tags/set=  33  sets_com_tags>WAYS= 64/ 64 (100.0%)  media_tags/set=32.02
+streaming        L2   SETS= 64 WAYS= 8 BLK_B= 64 : max_tags/set=  17  sets_com_tags>WAYS= 64/ 64 (100.0%)  media_tags/set=16.02
+matrix_conv      L1   SETS= 64 WAYS= 2 BLK_B= 32 : max_tags/set=  64  sets_com_tags>WAYS= 64/ 64 (100.0%)  media_tags/set=63.50
+matrix_conv      L2   SETS= 64 WAYS= 8 BLK_B= 64 : max_tags/set=  32  sets_com_tags>WAYS= 64/ 64 (100.0%)  media_tags/set=31.75
+linked_list      L1   SETS= 64 WAYS= 2 BLK_B= 32 : max_tags/set=  32  sets_com_tags>WAYS= 64/ 64 (100.0%)  media_tags/set=32.00  [regerado, offset corrigido]
+linked_list      L2   SETS= 64 WAYS= 8 BLK_B= 64 : max_tags/set=  16  sets_com_tags>WAYS= 64/ 64 (100.0%)  media_tags/set=16.00  [regerado, offset corrigido]
+pattern_search   L1   SETS= 64 WAYS= 2 BLK_B= 32 : max_tags/set=  32  sets_com_tags>WAYS= 64/ 64 (100.0%)  media_tags/set=31.50
+pattern_search   L2   SETS= 64 WAYS= 8 BLK_B= 64 : max_tags/set=  16  sets_com_tags>WAYS= 64/ 64 (100.0%)  media_tags/set=15.77

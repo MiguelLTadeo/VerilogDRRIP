@@ -1,0 +1,45 @@
+Reading pref.tcl
+
+# 2020.1
+
+# do sim/run_measure_bench_streaming_l1_drrip.do
+# Model Technology ModelSim - Intel FPGA Edition vlog 2020.1 Compiler 2020.02 Feb 28 2020
+# Start time: 10:31:01 on Jul 12,2026
+# vlog rtl/cache_datapath.v rtl/repl_lru_nway.v rtl/psel_dueling.v rtl/repl_drrip.v tb/measure_harness.v tb/measure_bench_streaming_l1_drrip_tb.v 
+# -- Compiling module cache_datapath
+# -- Compiling module repl_lru_nway
+# -- Compiling module psel_dueling
+# -- Compiling module repl_drrip
+# -- Compiling module measure_harness
+# -- Compiling module measure_bench_streaming_l1_drrip_tb
+# 
+# Top level modules:
+# 	measure_bench_streaming_l1_drrip_tb
+# End time: 10:31:01 on Jul 12,2026, Elapsed time: 0:00:00
+# Errors: 0, Warnings: 0
+# vsim -c work.measure_bench_streaming_l1_drrip_tb 
+# Start time: 10:31:01 on Jul 12,2026
+# Loading work.measure_bench_streaming_l1_drrip_tb
+# Loading work.measure_harness
+# Loading work.cache_datapath
+# Loading work.repl_drrip
+# Loading work.psel_dueling
+# ==================================================================
+# measure_harness: trace='tb/traces/bench_streaming.txt'
+#   config: ADDR_W=32 BLK_B=32 SETS=64 WAYS=2 policy=DRRIP
+# ==================================================================
+# ------------------------------------------------------------------
+#   acessos totais = 100608
+#   hits           = 94463
+#   misses         = 6145
+#   HIT RATE       = 93.892 %
+#   PSEL final (debug)            = 511
+#   follower_use_brrip_o final     = 1
+# ------------------------------------------------------------------
+# ==================================================================
+# RESULTADO: PASS (0 erros)
+# ==================================================================
+# ** Note: $finish    : tb/measure_harness.v(413)
+#    Time: 1251250 ns  Iteration: 1  Instance: /measure_bench_streaming_l1_drrip_tb/u_measure
+# End time: 10:31:02 on Jul 12,2026, Elapsed time: 0:00:01
+# Errors: 0, Warnings: 0
