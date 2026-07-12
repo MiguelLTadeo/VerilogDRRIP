@@ -34,50 +34,58 @@ module cache_addr #(
     parameter BLK_B      = 4, // bytes por bloco/linha de cache
     parameter SETS       = 4, // numero de conjuntos (sets)
     parameter WAYS       = 2, // associatividade (vias por set)
-    parameter RRPV_BITS  = 2, // reservado p/ storage de RRPV (fase 3/4)
+    parameter RRPV_BITS  = 2  // reservado p/ storage de RRPV (fase 3/4)
+)(
+    clk, rst,
+    addr_i, tag_o, index_o, offset_o,
+    wr_en_i, wr_way_i, wr_index_i, wr_valid_i, wr_tag_i, wr_data_i,
+    rd_way_i, rd_index_i, rd_valid_o, rd_tag_o, rd_data_o
+);
 
     // ---- larguras derivadas: NUNCA hardcoded, sempre calculadas a partir
     //      dos parameters acima, para permitir escalar a cache trocando
-    //      so os parameters na instanciacao. Ficam aqui (dentro da lista
-    //      de parametros ANSI-style, sintaxe IEEE1364-2005/SystemVerilog)
-    //      porque precisam estar disponiveis ANTES da declaracao das
-    //      portas abaixo, que usam TAG_W/INDEX_W/OFFSET_W/WAY_W para
-    //      dimensionar seus barramentos. Ver "pressupostos" no relatorio
-    //      de entrega quanto a compatibilidade com o Quartus alvo. --------
-    localparam OFFSET_W = $clog2(BLK_B),               // bits de offset dentro do bloco
-    localparam INDEX_W  = $clog2(SETS),                // bits de indice do set
-    localparam TAG_W    = ADDR_W - INDEX_W - OFFSET_W, // bits restantes = tag
-    localparam WAY_W    = (WAYS > 1) ? $clog2(WAYS) : 1 // bits p/ selecionar a via
-)(
-    input  wire                     clk,
-    input  wire                     rst,        // reset SINCRONO, ativo alto
+    //      so os parameters na instanciacao. Declaradas aqui, logo no
+    //      inicio do corpo do modulo -- estilo de porta Verilog-1995/2001
+    //      NAO-ANSI (a lista de parametros #(...) so aceita `parameter` de
+    //      verdade nesta sintaxe, compativel com o Quartus II 13.0sp1/
+    //      Cyclone III alvo do projeto) -- porque precisam estar
+    //      disponiveis ANTES da declaracao das portas abaixo, que usam
+    //      TAG_W/INDEX_W/OFFSET_W/WAY_W para dimensionar seus barramentos;
+    //      ordem textual valida em Verilog, ja que a declaracao de porta
+    //      vem DEPOIS destes localparams no corpo do modulo. --------------
+    localparam OFFSET_W = $clog2(BLK_B);               // bits de offset dentro do bloco
+    localparam INDEX_W  = $clog2(SETS);                // bits de indice do set
+    localparam TAG_W    = ADDR_W - INDEX_W - OFFSET_W; // bits restantes = tag
+    localparam WAY_W    = (WAYS > 1) ? $clog2(WAYS) : 1; // bits p/ selecionar a via
+
+    input  wire                     clk;
+    input  wire                     rst;        // reset SINCRONO, ativo alto
 
     // ---- decodificacao de endereco (puramente combinacional) --------------
     // addr_i = { TAG (MSBs) | INDEX | OFFSET (LSBs) }
-    input  wire [ADDR_W-1:0]        addr_i,
-    output wire [TAG_W-1:0]         tag_o,
-    output wire [INDEX_W-1:0]       index_o,
-    output wire [OFFSET_W-1:0]      offset_o,
+    input  wire [ADDR_W-1:0]        addr_i;
+    output wire [TAG_W-1:0]         tag_o;
+    output wire [INDEX_W-1:0]       index_o;
+    output wire [OFFSET_W-1:0]      offset_o;
 
     // ---- porta de escrita do storage por via (sincrona) --------------------
     // usada pelos modulos de fase futura para alocar/atualizar uma linha
     // (fill em miss, invalidacao, etc.)
-    input  wire                     wr_en_i,
-    input  wire [WAY_W-1:0]         wr_way_i,
-    input  wire [INDEX_W-1:0]       wr_index_i,
-    input  wire                     wr_valid_i,
-    input  wire [TAG_W-1:0]         wr_tag_i,
-    input  wire [BLK_B*8-1:0]       wr_data_i,
+    input  wire                     wr_en_i;
+    input  wire [WAY_W-1:0]         wr_way_i;
+    input  wire [INDEX_W-1:0]       wr_index_i;
+    input  wire                     wr_valid_i;
+    input  wire [TAG_W-1:0]         wr_tag_i;
+    input  wire [BLK_B*8-1:0]       wr_data_i;
 
     // ---- porta de leitura do storage por via (combinacional) ---------------
     // usada pelos modulos de fase futura para consultar uma via/set ao
     // testar hit/miss (a comparacao em si fica fora deste modulo).
-    input  wire [WAY_W-1:0]         rd_way_i,
-    input  wire [INDEX_W-1:0]       rd_index_i,
-    output wire                     rd_valid_o,
-    output wire [TAG_W-1:0]         rd_tag_o,
-    output wire [BLK_B*8-1:0]       rd_data_o
-);
+    input  wire [WAY_W-1:0]         rd_way_i;
+    input  wire [INDEX_W-1:0]       rd_index_i;
+    output wire                     rd_valid_o;
+    output wire [TAG_W-1:0]         rd_tag_o;
+    output wire [BLK_B*8-1:0]       rd_data_o;
 
     // -------------------------------------------------------------------
     // Storage por via: um array de registradores para cada campo,

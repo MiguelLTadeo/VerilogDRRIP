@@ -204,53 +204,64 @@ module repl_drrip #(
     // "ESQUEMA DE MAPEAMENTO" no cabecalho). Default=4 -> 1/16 de cada lado
     // para SETS=64 (configs do Apendice B). DEVE satisfazer
     // 1 <= SDM_SEL_BITS <= INDEX_W (ver guarda de elaboracao abaixo).
-    parameter SDM_SEL_BITS = 4,
+    parameter SDM_SEL_BITS = 4
+)(
+    clk, rst,
+    hit_en_i, hit_way_i, hit_index_i,
+    fill_en_i, fill_way_i, fill_index_i,
+    victim_req_i, victim_index_i, victim_busy_o, victim_valid_o, victim_way_o,
+    rd_way_i, rd_index_i, rd_rrpv_o,
+    psel_o, follower_use_brrip_o, rd_is_sdm_srrip_o, rd_is_sdm_brrip_o
+);
 
     // ---- larguras/derivados: mesmo padrao de repl_srrip.v/repl_brrip.v,
-    //      nunca hardcoded. -------------------------------------------------
-    localparam INDEX_W  = $clog2(SETS),
-    localparam WAY_W    = (WAYS > 1) ? $clog2(WAYS) : 1,
+    //      nunca hardcoded. Declarados aqui, logo no inicio do corpo do
+    //      modulo -- estilo de porta Verilog-1995/2001 NAO-ANSI (a lista de
+    //      parametros #(...) so aceita `parameter` de verdade nesta
+    //      sintaxe, compativel com o Quartus II 13.0sp1/Cyclone III alvo do
+    //      projeto). -------------------------------------------------------
+    localparam INDEX_W  = $clog2(SETS);
+    localparam WAY_W    = (WAYS > 1) ? $clog2(WAYS) : 1;
 
-    localparam [RRPV_BITS-1:0] RRPV_MAX        = {RRPV_BITS{1'b1}},
-    localparam [RRPV_BITS-1:0] RRPV_INSERT_MID = RRPV_MAX - {{(RRPV_BITS-1){1'b0}}, 1'b1}, // RRPV_MAX-1
-    localparam [RRPV_BITS-1:0] RRPV_INSERT_FAR = RRPV_MAX                                  // RRPV_MAX
-)(
-    input  wire                  clk,
-    input  wire                  rst,        // reset SINCRONO, ativo alto
+    localparam [RRPV_BITS-1:0] RRPV_MAX        = {RRPV_BITS{1'b1}};
+    localparam [RRPV_BITS-1:0] RRPV_INSERT_MID = RRPV_MAX - {{(RRPV_BITS-1){1'b0}}, 1'b1}; // RRPV_MAX-1
+    localparam [RRPV_BITS-1:0] RRPV_INSERT_FAR = RRPV_MAX;                                 // RRPV_MAX
+
+    input  wire                  clk;
+    input  wire                  rst;        // reset SINCRONO, ativo alto
 
     // ---- HIT (sincrono): identico a repl_srrip.v/repl_brrip.v -------------
-    input  wire                  hit_en_i,
-    input  wire [WAY_W-1:0]      hit_way_i,
-    input  wire [INDEX_W-1:0]    hit_index_i,
+    input  wire                  hit_en_i;
+    input  wire [WAY_W-1:0]      hit_way_i;
+    input  wire [INDEX_W-1:0]    hit_index_i;
 
     // ---- FILL (sincrono): valor de insercao decidido pelo PAPEL do set
     //      fill_index_i (ver "ROTEAMENTO DE INSERCAO" no cabecalho) --------
-    input  wire                  fill_en_i,
-    input  wire [WAY_W-1:0]      fill_way_i,
-    input  wire [INDEX_W-1:0]    fill_index_i,
+    input  wire                  fill_en_i;
+    input  wire [WAY_W-1:0]      fill_way_i;
+    input  wire [INDEX_W-1:0]    fill_index_i;
 
     // ---- busca de vitima (handshake multi-ciclo, protocolo IDENTICO a
     //      repl_srrip.v/repl_brrip.v -- victim_req_i tambem e o proprio
     //      evento de "miss" consumido pelo PSEL interno, ver cabecalho) ----
-    input  wire                  victim_req_i,
-    input  wire [INDEX_W-1:0]    victim_index_i,
-    output wire                  victim_busy_o,
-    output wire                  victim_valid_o,
-    output wire [WAY_W-1:0]      victim_way_o,
+    input  wire                  victim_req_i;
+    input  wire [INDEX_W-1:0]    victim_index_i;
+    output wire                  victim_busy_o;
+    output wire                  victim_valid_o;
+    output wire [WAY_W-1:0]      victim_way_o;
 
     // ---- consulta combinacional do RRPV cru de uma via (debug/verificacao) --
-    input  wire [WAY_W-1:0]      rd_way_i,
-    input  wire [INDEX_W-1:0]    rd_index_i,
-    output wire [RRPV_BITS-1:0]  rd_rrpv_o,
+    input  wire [WAY_W-1:0]      rd_way_i;
+    input  wire [INDEX_W-1:0]    rd_index_i;
+    output wire [RRPV_BITS-1:0]  rd_rrpv_o;
 
     // ---- saidas de debug ADICIONAIS (opcionais para o integrador, ver
     //      cabecalho -- uteis para o testbench provar o roteamento SDM/PSEL
     //      sem depender de referencia hierarquica) ---------------------------
-    output wire [PSEL_BITS-1:0]  psel_o,               // passthrough do PSEL interno
-    output wire                  follower_use_brrip_o,  // passthrough do PSEL interno
-    output wire                  rd_is_sdm_srrip_o,     // papel de rd_index_i: SDM-SRRIP?
-    output wire                  rd_is_sdm_brrip_o      // papel de rd_index_i: SDM-BRRIP?
-);
+    output wire [PSEL_BITS-1:0]  psel_o;               // passthrough do PSEL interno
+    output wire                  follower_use_brrip_o;  // passthrough do PSEL interno
+    output wire                  rd_is_sdm_srrip_o;     // papel de rd_index_i: SDM-SRRIP?
+    output wire                  rd_is_sdm_brrip_o;     // papel de rd_index_i: SDM-BRRIP?
 
     // -------------------------------------------------------------------
     // Guardas de elaboracao (mesma tecnica comprovada em repl_srrip.v/

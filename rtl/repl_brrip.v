@@ -181,31 +181,42 @@ module repl_brrip #(
     // RRPV_INSERT_COMMON). Default=5 -> 1/32, fidelidade ao paper (Jaleel et
     // al., ISCA 2010). Ver nota de mecanismo no cabecalho para a taxa
     // efetivamente usada na config de validacao deste projeto (2 bits, 1/4).
-    parameter BRRIP_THROTTLE_BITS = 5,
+    parameter BRRIP_THROTTLE_BITS = 5
+)(
+    clk, rst,
+    hit_en_i, hit_way_i, hit_index_i,
+    fill_en_i, fill_way_i, fill_index_i,
+    victim_req_i, victim_index_i, victim_busy_o, victim_valid_o, victim_way_o,
+    rd_way_i, rd_index_i, rd_rrpv_o
+);
 
     // ---- larguras/derivados: mesmo padrao de repl_srrip.v, nunca
-    //      hardcoded, calculados a partir dos parameters. -------------------
-    localparam INDEX_W  = $clog2(SETS),                  // bits de indice do set
-    localparam WAY_W    = (WAYS > 1) ? $clog2(WAYS) : 1,  // bits p/ selecionar a via
+    //      hardcoded, calculados a partir dos parameters. Declarados aqui,
+    //      logo no inicio do corpo do modulo -- estilo de porta
+    //      Verilog-1995/2001 NAO-ANSI (a lista de parametros #(...) so
+    //      aceita `parameter` de verdade nesta sintaxe, compativel com o
+    //      Quartus II 13.0sp1/Cyclone III alvo do projeto). ---------------
+    localparam INDEX_W  = $clog2(SETS);                  // bits de indice do set
+    localparam WAY_W    = (WAYS > 1) ? $clog2(WAYS) : 1;  // bits p/ selecionar a via
 
     // RRPV_MAX = todos os bits em 1 (maior valor representavel em RRPV_BITS
     // bits) = "re-referencia distante" = valor de insercao COMUM do BRRIP.
     // RRPV_INSERT_RARE = RRPV_MAX-1 = "intervalo intermediario" = valor de
     // insercao RARO do BRRIP (mesmo valor que o SRRIP usa SEMPRE).
-    localparam [RRPV_BITS-1:0] RRPV_MAX            = {RRPV_BITS{1'b1}},
-    localparam [RRPV_BITS-1:0] RRPV_INSERT_RARE    = RRPV_MAX - {{(RRPV_BITS-1){1'b0}}, 1'b1},
-    localparam [RRPV_BITS-1:0] RRPV_INSERT_COMMON  = RRPV_MAX
-)(
-    input  wire                  clk,
-    input  wire                  rst,        // reset SINCRONO, ativo alto
+    localparam [RRPV_BITS-1:0] RRPV_MAX            = {RRPV_BITS{1'b1}};
+    localparam [RRPV_BITS-1:0] RRPV_INSERT_RARE    = RRPV_MAX - {{(RRPV_BITS-1){1'b0}}, 1'b1};
+    localparam [RRPV_BITS-1:0] RRPV_INSERT_COMMON  = RRPV_MAX;
+
+    input  wire                  clk;
+    input  wire                  rst;        // reset SINCRONO, ativo alto
 
     // ---- HIT (sincrono): a via acessada passa a "re-referencia imediata" --
     // pulsar 1 ciclo quando a logica de hit/miss (modulo/fase futura)
     // detectar um HIT na via hit_way_i do set hit_index_i. Identico a
     // repl_srrip.v.
-    input  wire                  hit_en_i,
-    input  wire [WAY_W-1:0]      hit_way_i,
-    input  wire [INDEX_W-1:0]    hit_index_i,
+    input  wire                  hit_en_i;
+    input  wire [WAY_W-1:0]      hit_way_i;
+    input  wire [INDEX_W-1:0]    hit_index_i;
 
     // ---- FILL (sincrono): a via recem-preenchida recebe o valor de
     //      insercao decidido pelo throttle bimodal desta borda (RARO ->
@@ -213,9 +224,9 @@ module repl_brrip #(
     //      cabecalho). Pulsar 1 ciclo apos o fill do storage (cache_addr.v)
     //      na via vitima indicada por victim_way_o. Cada pulso de fill_en_i
     //      tambem avanca (incrementa) o contador global de throttle em 1.
-    input  wire                  fill_en_i,
-    input  wire [WAY_W-1:0]      fill_way_i,
-    input  wire [INDEX_W-1:0]    fill_index_i,
+    input  wire                  fill_en_i;
+    input  wire [WAY_W-1:0]      fill_way_i;
+    input  wire [INDEX_W-1:0]    fill_index_i;
 
     // CONTRATO DE SEQUENCIAMENTO fill_en_i vs. novo victim_req_i no MESMO
     // set (achado na revisao rtl-analyst da Fase 4, mesma race simetrica a
@@ -240,18 +251,17 @@ module repl_brrip #(
     // fica 1 durante a busca; victim_valid_o pulsa 1 ciclo quando a vitima e
     // encontrada, com victim_way_o valido nesse mesmo ciclo. Desempate por
     // menor indice de via.
-    input  wire                  victim_req_i,
-    input  wire [INDEX_W-1:0]    victim_index_i,
-    output wire                  victim_busy_o,
-    output wire                  victim_valid_o,
-    output wire [WAY_W-1:0]      victim_way_o,
+    input  wire                  victim_req_i;
+    input  wire [INDEX_W-1:0]    victim_index_i;
+    output wire                  victim_busy_o;
+    output wire                  victim_valid_o;
+    output wire [WAY_W-1:0]      victim_way_o;
 
     // ---- consulta combinacional do RRPV cru de uma via (debug/verificacao) --
     // mesmo padrao rd_*_i/rd_*_o de repl_srrip.v/cache_addr.v/repl_lru.v.
-    input  wire [WAY_W-1:0]      rd_way_i,
-    input  wire [INDEX_W-1:0]    rd_index_i,
-    output wire [RRPV_BITS-1:0]  rd_rrpv_o
-);
+    input  wire [WAY_W-1:0]      rd_way_i;
+    input  wire [INDEX_W-1:0]    rd_index_i;
+    output wire [RRPV_BITS-1:0]  rd_rrpv_o;
 
     // -------------------------------------------------------------------
     // Guarda de elaboracao #1: RRPV_BITS precisa ser >=1, MESMA razao e

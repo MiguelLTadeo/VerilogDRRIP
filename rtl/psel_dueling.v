@@ -153,16 +153,26 @@ module psel_dueling #(
     // rejeitado, e a config REDUZIDA usada no testbench de validacao desta
     // fase, mesmo espirito de BRRIP_THROTTLE_BITS reduzido em
     // tb/repl_brrip_tb.v -- ver cabecalho daquele arquivo).
-    parameter PSEL_BITS = 10,
+    parameter PSEL_BITS = 10
+)(
+    clk, rst,
+    miss_srrip_i, miss_brrip_i,
+    follower_use_brrip_o,
+    psel_o
+);
 
     // ---- derivados: mesmo padrao de repl_srrip.v/repl_brrip.v, nunca
-    //      hardcoded, calculados a partir do parameter. ---------------------
-    localparam [PSEL_BITS-1:0] PSEL_MAX   = {PSEL_BITS{1'b1}},          // teto (todos os bits em 1)
-    localparam [PSEL_BITS-1:0] PSEL_MIN   = {PSEL_BITS{1'b0}},          // piso (todos os bits em 0)
-    localparam [PSEL_BITS-1:0] PSEL_RESET = {1'b1, {(PSEL_BITS-1){1'b0}}} // ponto medio (MSB=1, resto=0)
-)(
-    input  wire clk,
-    input  wire rst,              // reset SINCRONO, ativo alto
+    //      hardcoded, calculados a partir do parameter. Declarados aqui,
+    //      logo no inicio do corpo do modulo -- estilo de porta
+    //      Verilog-1995/2001 NAO-ANSI (a lista de parametros #(...) so
+    //      aceita `parameter` de verdade nesta sintaxe, compativel com o
+    //      Quartus II 13.0sp1/Cyclone III alvo do projeto). ---------------
+    localparam [PSEL_BITS-1:0] PSEL_MAX   = {PSEL_BITS{1'b1}};          // teto (todos os bits em 1)
+    localparam [PSEL_BITS-1:0] PSEL_MIN   = {PSEL_BITS{1'b0}};          // piso (todos os bits em 0)
+    localparam [PSEL_BITS-1:0] PSEL_RESET = {1'b1, {(PSEL_BITS-1){1'b0}}}; // ponto medio (MSB=1, resto=0)
+
+    input  wire clk;
+    input  wire rst;              // reset SINCRONO, ativo alto
 
     // ---- eventos de miss dos SDMs (pulsos de 1 ciclo) ----------------------
     // pulsar 1 ciclo quando a logica de hit/miss (fora do escopo deste
@@ -175,8 +185,8 @@ module psel_dueling #(
     // contando/saturando normalmente) -- ao contrario das FSMs multi-ciclo
     // de repl_srrip.v/repl_brrip.v, este modulo nao tem estado transitorio
     // que um pulso sustentado possa corromper.
-    input  wire miss_srrip_i,     // miss no SDM-SRRIP -> DECREMENTA o PSEL
-    input  wire miss_brrip_i,     // miss no SDM-BRRIP -> INCREMENTA o PSEL
+    input  wire miss_srrip_i;     // miss no SDM-SRRIP -> DECREMENTA o PSEL
+    input  wire miss_brrip_i;     // miss no SDM-BRRIP -> INCREMENTA o PSEL
 
     // ---- decisao de politica para os sets seguidores (combinacional, funcao
     //      direta do MSB corrente de psel_reg -- ver relacao MSB<->politica
@@ -185,7 +195,7 @@ module psel_dueling #(
     //   0 -> seguidores devem usar SRRIP (BRRIP esta performando pior no seu SDM,
     //        ou -- no reset, antes de qualquer amostragem -- empate resolvido
     //        a favor de SRRIP por construcao do valor de reset, ver acima)
-    output wire follower_use_brrip_o,
+    output wire follower_use_brrip_o;
 
     // ---- consulta combinacional do valor bruto do contador PSEL (debug/
     //      verificacao) -- mesmo padrao rd_*_i/rd_*_o de cache_addr.v/
@@ -198,8 +208,7 @@ module psel_dueling #(
     //      global, nao indexado por via/set) -- por isso a porta de debug
     //      aqui e mais simples que as dos demais modulos (sem entrada
     //      rd_*_i de endereco, so a saida com o valor corrente).
-    output wire [PSEL_BITS-1:0] psel_o
-);
+    output wire [PSEL_BITS-1:0] psel_o;
 
     // -------------------------------------------------------------------
     // Guarda de elaboracao: PSEL_BITS precisa ser >=2. Motivo (especifico

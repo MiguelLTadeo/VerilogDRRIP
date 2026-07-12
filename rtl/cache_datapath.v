@@ -150,19 +150,35 @@ module cache_datapath #(
     parameter ADDR_W = 8, // largura do endereco de memoria (bits)
     parameter BLK_B  = 4, // bytes por bloco/linha de cache
     parameter SETS   = 4, // numero de conjuntos (sets)
-    parameter WAYS   = 2, // associatividade (vias por set) -- QUALQUER valor >=1
+    parameter WAYS   = 2  // associatividade (vias por set) -- QUALQUER valor >=1
+)(
+    clk, rst,
+    req_i, we_i, addr_i, wdata_i, ready_o,
+    rdata_valid_o, rdata_o,
+    hit_o, miss_o, fill_done_o, access_index_o, access_way_o,
+    victim_valid_i, victim_way_i,
+    fill_data_i,
+    wb_req_o, wb_addr_o, wb_data_o
+);
 
     // ---- larguras derivadas: NUNCA hardcoded, mesmo padrao/formula de
     //      cache_addr.v (nao reinstanciado aqui, ver DECISAO DE PROJETO #1
     //      no cabecalho, mas a formula e IDENTICA para manter os dois
     //      modulos sempre compativeis bit a bit ao trocar so os parameters).
-    localparam OFFSET_W = $clog2(BLK_B),               // bits de offset dentro do bloco
-    localparam INDEX_W  = $clog2(SETS),                // bits de indice do set
-    localparam TAG_W    = ADDR_W - INDEX_W - OFFSET_W, // bits restantes = tag
-    localparam WAY_W    = (WAYS > 1) ? $clog2(WAYS) : 1 // bits p/ selecionar a via
-)(
-    input  wire                   clk,
-    input  wire                   rst,        // reset SINCRONO, ativo alto
+    //      Declaradas aqui, logo no inicio do corpo do modulo -- estilo de
+    //      porta Verilog-1995/2001 NAO-ANSI (a lista de parametros #(...)
+    //      so aceita `parameter` de verdade nesta sintaxe, compativel com o
+    //      Quartus II 13.0sp1/Cyclone III alvo do projeto) -- porque
+    //      precisam estar disponiveis ANTES da declaracao das portas
+    //      abaixo, que usam TAG_W/INDEX_W/OFFSET_W/WAY_W para dimensionar
+    //      seus barramentos.
+    localparam OFFSET_W = $clog2(BLK_B);               // bits de offset dentro do bloco
+    localparam INDEX_W  = $clog2(SETS);                // bits de indice do set
+    localparam TAG_W    = ADDR_W - INDEX_W - OFFSET_W; // bits restantes = tag
+    localparam WAY_W    = (WAYS > 1) ? $clog2(WAYS) : 1; // bits p/ selecionar a via
+
+    input  wire                   clk;
+    input  wire                   rst;        // reset SINCRONO, ativo alto
 
     // ---- interface do processador / harness de medicao (Fase 8) -----------
     // CONTRATO DE req_i (mesmo rigor de documentacao dos contratos de pulso
@@ -199,36 +215,35 @@ module cache_datapath #(
     //   addr_i/derrubar req_i" sem informacao adicional fora de escopo
     //   aqui). A responsabilidade de nao reemitir sem querer e do
     //   integrador, como em qualquer barramento valid/ready convencional.
-    input  wire                   req_i,      // pulsar 1 ciclo p/ solicitar acesso (ver CONTRATO acima)
-    input  wire                   we_i,       // 1=escrita, 0=leitura (qualificado por req_i)
-    input  wire [ADDR_W-1:0]      addr_i,
-    input  wire [BLK_B*8-1:0]     wdata_i,    // dado a escrever (bloco INTEIRO, ver nota de granularidade)
-    output wire                   ready_o,    // 1 quando o datapath aceita um novo req_i (S_IDLE)
+    input  wire                   req_i;      // pulsar 1 ciclo p/ solicitar acesso (ver CONTRATO acima)
+    input  wire                   we_i;       // 1=escrita, 0=leitura (qualificado por req_i)
+    input  wire [ADDR_W-1:0]      addr_i;
+    input  wire [BLK_B*8-1:0]     wdata_i;    // dado a escrever (bloco INTEIRO, ver nota de granularidade)
+    output wire                   ready_o;    // 1 quando o datapath aceita um novo req_i (S_IDLE)
 
-    output wire                   rdata_valid_o, // pulso 1 ciclo: rdata_o valido (so em leitura)
-    output wire [BLK_B*8-1:0]     rdata_o,
+    output wire                   rdata_valid_o; // pulso 1 ciclo: rdata_o valido (so em leitura)
+    output wire [BLK_B*8-1:0]     rdata_o;
 
     // ---- interface de substituicao PLUGAVEL (ver DECISAO DE PROJETO #2) ---
     // saidas consumidas pelo modulo de politica externo (repl_lru OU
     // repl_srrip/repl_brrip+psel_dueling, instanciados por fora, Fase 8):
-    output wire                   hit_o,          // pulso 1 ciclo: hit nesta transacao
-    output wire                   miss_o,         // pulso 1 ciclo: miss detectado (== pedido de via vitima)
-    output wire                   fill_done_o,    // pulso 1 ciclo: fill concluido (nova via valida)
-    output wire [INDEX_W-1:0]     access_index_o, // set da transacao corrente (valido com hit_o/miss_o/fill_done_o)
-    output wire [WAY_W-1:0]       access_way_o,   // via envolvida (hit_way em hit_o; via preenchida em fill_done_o)
+    output wire                   hit_o;          // pulso 1 ciclo: hit nesta transacao
+    output wire                   miss_o;         // pulso 1 ciclo: miss detectado (== pedido de via vitima)
+    output wire                   fill_done_o;    // pulso 1 ciclo: fill concluido (nova via valida)
+    output wire [INDEX_W-1:0]     access_index_o; // set da transacao corrente (valido com hit_o/miss_o/fill_done_o)
+    output wire [WAY_W-1:0]       access_way_o;   // via envolvida (hit_way em hit_o; via preenchida em fill_done_o)
 
     // entradas vindas do modulo de politica externo (resposta ao miss_o):
-    input  wire                   victim_valid_i, // 1 quando victim_way_i esta valido p/ consumo
-    input  wire [WAY_W-1:0]       victim_way_i,
+    input  wire                   victim_valid_i; // 1 quando victim_way_i esta valido p/ consumo
+    input  wire [WAY_W-1:0]       victim_way_i;
 
     // ---- interface com memoria/nivel inferior (ver nota de modelo de memoria) --
-    input  wire [BLK_B*8-1:0]     fill_data_i,    // bloco vindo da memoria, amostrado no ciclo do fill
+    input  wire [BLK_B*8-1:0]     fill_data_i;    // bloco vindo da memoria, amostrado no ciclo do fill
 
     // ---- write-back (consequencia da politica WRITE-BACK assumida acima) ---
-    output wire                   wb_req_o,       // pulso 1 ciclo: via vitima estava suja, precisa write-back
-    output wire [ADDR_W-1:0]      wb_addr_o,      // endereco reconstruido da linha evictada (tag antigo + index)
-    output wire [BLK_B*8-1:0]     wb_data_o       // dado da linha evictada
-);
+    output wire                   wb_req_o;       // pulso 1 ciclo: via vitima estava suja, precisa write-back
+    output wire [ADDR_W-1:0]      wb_addr_o;      // endereco reconstruido da linha evictada (tag antigo + index)
+    output wire [BLK_B*8-1:0]     wb_data_o;      // dado da linha evictada
 
     // -------------------------------------------------------------------
     // Storage por via/set: tag/valid/dirty/data, MESMO estilo de array

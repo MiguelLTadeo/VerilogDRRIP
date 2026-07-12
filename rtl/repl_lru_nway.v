@@ -120,35 +120,43 @@
 
 module repl_lru_nway #(
     parameter SETS = 4, // numero de conjuntos (sets)
-    parameter WAYS = 2, // associatividade (vias por set) -- QUALQUER valor >=1
+    parameter WAYS = 2  // associatividade (vias por set) -- QUALQUER valor >=1
                          // (diferente de repl_lru.v, aqui NAO ha guard de
                          // elaboracao restringindo a 2 -- esta e a
                          // generalizacao que a Fase 7 pede)
+)(
+    clk, rst,
+    wr_en_i, wr_way_i, wr_index_i,
+    rd_index_i, rd_mru_way_o, rd_victim_way_o
+);
 
     // ---- larguras derivadas: mesmo padrao/formula de cache_addr.v e
-    //      repl_lru.v, nunca hardcoded. ----------------------------------
-    localparam INDEX_W = $clog2(SETS),                 // bits de indice do set
-    localparam WAY_W   = (WAYS > 1) ? $clog2(WAYS) : 1  // bits p/ selecionar a via
-)(
-    input  wire                  clk,
-    input  wire                  rst,        // reset SINCRONO, ativo alto
+    //      repl_lru.v, nunca hardcoded. Declaradas aqui, logo no inicio do
+    //      corpo do modulo -- estilo de porta Verilog-1995/2001 NAO-ANSI (a
+    //      lista de parametros #(...) so aceita `parameter` de verdade
+    //      nesta sintaxe, compativel com o Quartus II 13.0sp1/Cyclone III
+    //      alvo do projeto). --------------------------------------------
+    localparam INDEX_W = $clog2(SETS);                 // bits de indice do set
+    localparam WAY_W   = (WAYS > 1) ? $clog2(WAYS) : 1;  // bits p/ selecionar a via
+
+    input  wire                  clk;
+    input  wire                  rst;        // reset SINCRONO, ativo alto
 
     // ---- porta de atualizacao do estado MRU (sincrona) ----------------------
     // usada tanto em HIT (marca a via acessada como MRU) quanto logo apos
     // o fill de uma linha em MISS/eviction (marca a via recem-preenchida
     // como MRU) -- MESMA acao de hardware nos dois casos, MESMO contrato
     // de repl_lru.v (ver cabecalho).
-    input  wire                  wr_en_i,
-    input  wire [WAY_W-1:0]      wr_way_i,
-    input  wire [INDEX_W-1:0]    wr_index_i,
+    input  wire                  wr_en_i;
+    input  wire [WAY_W-1:0]      wr_way_i;
+    input  wire [INDEX_W-1:0]    wr_index_i;
 
     // ---- porta de consulta do set (combinacional) ----------------------------
     // usada pela logica de hit/miss (cache_datapath.v, Fase 6) para saber
     // a via MRU e, em caso de MISS, qual via deve ser a vitima.
-    input  wire [INDEX_W-1:0]    rd_index_i,
-    output wire [WAY_W-1:0]      rd_mru_way_o,    // via mais recentemente usada do set consultado
-    output wire [WAY_W-1:0]      rd_victim_way_o  // via vitima (true LRU exato, qualquer WAYS>=1)
-);
+    input  wire [INDEX_W-1:0]    rd_index_i;
+    output wire [WAY_W-1:0]      rd_mru_way_o;    // via mais recentemente usada do set consultado
+    output wire [WAY_W-1:0]      rd_victim_way_o; // via vitima (true LRU exato, qualquer WAYS>=1)
 
     // -------------------------------------------------------------------
     // Estado: matriz de recencia por set. Array unpacked de 3 dimensoes

@@ -1,25 +1,24 @@
 # -------------------------------------------------------------------------- #
 #
-# Copyright (C) 2020  Intel Corporation. All rights reserved.
-# Your use of Intel Corporation's design tools, logic functions 
-# and other software and tools, and any partner logic 
+# Copyright (C) 1991-2013 Altera Corporation
+# Your use of Altera Corporation's design tools, logic functions 
+# and other software and tools, and its AMPP partner logic 
 # functions, and any output files from any of the foregoing 
 # (including device programming or simulation files), and any 
 # associated documentation or information are expressly subject 
-# to the terms and conditions of the Intel Program License 
-# Subscription Agreement, the Intel Quartus Prime License Agreement,
-# the Intel FPGA IP License Agreement, or other applicable license
-# agreement, including, without limitation, that your use is for
-# the sole purpose of programming logic devices manufactured by
-# Intel and sold by Intel or its authorized distributors.  Please
-# refer to the applicable agreement for further details, at
-# https://fpgasoftware.intel.com/eula.
+# to the terms and conditions of the Altera Program License 
+# Subscription Agreement, Altera MegaCore Function License 
+# Agreement, or other applicable license agreement, including, 
+# without limitation, that your use is for the sole purpose of 
+# programming logic devices manufactured by Altera and sold by 
+# Altera or its authorized distributors.  Please refer to the 
+# applicable agreement for further details.
 #
 # -------------------------------------------------------------------------- #
 #
-# Quartus Prime
-# Version 20.1.1 Build 720 11/11/2020 SJ Lite Edition
-# Date created = 10:54:13  July 12, 2026
+# Quartus II 32-bit
+# Version 13.0.1 Build 232 06/12/2013 Service Pack 1 SJ Web Edition
+# Date created = 11:54:38  July 12, 2026
 #
 # -------------------------------------------------------------------------- #
 #
@@ -31,7 +30,7 @@
 #		assignment_defaults.qdf
 #
 # 2) Altera recommends that you do not modify this file. This
-#    file is updated automatically by the Quartus Prime software
+#    file is updated automatically by the Quartus II software
 #    and any changes you make may be lost or overwritten.
 #
 # -------------------------------------------------------------------------- #
@@ -40,9 +39,9 @@
 set_global_assignment -name FAMILY "Cyclone III"
 set_global_assignment -name DEVICE EP3C25F324C6
 set_global_assignment -name TOP_LEVEL_ENTITY cache_datapath
-set_global_assignment -name ORIGINAL_QUARTUS_VERSION 20.1.1
-set_global_assignment -name PROJECT_CREATION_TIME_DATE "10:54:13  JULY 12, 2026"
-set_global_assignment -name LAST_QUARTUS_VERSION "20.1.1 Lite Edition"
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION "13.0 SP1"
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "11:54:38  JULY 12, 2026"
+set_global_assignment -name LAST_QUARTUS_VERSION "13.0 SP1"
 set_global_assignment -name VERILOG_FILE ../rtl/repl_brrip.v
 set_global_assignment -name VERILOG_FILE ../rtl/repl_lru.v
 set_global_assignment -name VERILOG_FILE ../rtl/repl_lru_nway.v
