@@ -103,78 +103,93 @@ Já rodados e versionados:
 
 ---
 
-## 2. Quartus (síntese) — projeto pronto, mas com limitação real de ambiente
+## 2. Quartus (síntese) — funcionando, com o Quartus II 13.0sp1 (legado)
 
-### 2.1 O que já está pronto
+### 2.1 Duas instalações do Quartus nesta máquina, para propósitos diferentes
 
-Criei o projeto em `quartus/` (`cache_pi4.qpf`/`cache_pi4.qsf`), com
-**todos** os módulos de `rtl/*.v` já adicionados e o dispositivo alvo
-real do projeto configurado (`Cyclone III`, `EP3C25F324C6`). O script
-que gera esse projeto (`quartus/setup_project.tcl`) é reexecutável:
+| | Quartus Prime 20.1 | Quartus II 13.0sp1 (legado) |
+|---|---|---|
+| Path | `/home/miguel/intelFPGA_lite/20.1/quartus/bin` | `/home/miguel/altera/13.0sp1/quartus/bin` |
+| Suporta Cyclone III? | **Não** (família descontinuada) | **Sim** — é a última versão que suporta |
+| Pacote de dispositivo instalado? | Nenhum (`devdata/` vazio) | Sim, Cyclone II/III/IV (`cyclone_web-13.0.1.232.qdz`) |
+| Uso neste projeto | Referência/estudo só | **É o que sintetiza de verdade pro EP3C25F324C6** |
+
+Use sempre o **Quartus II 13.0sp1** (segunda coluna) pra qualquer
+síntese real deste projeto.
+
+### 2.2 O que já está pronto e testado
+
+Projeto em `quartus/` (`cache_pi4.qpf`/`cache_pi4.qsf`), com **todos**
+os módulos de `rtl/*.v` adicionados e o dispositivo alvo real
+configurado (`Cyclone III`, `EP3C25F324C6`). Script que regenera o
+projeto (`quartus/setup_project.tcl`), reexecutável:
 
 ```bash
-export PATH=/home/miguel/intelFPGA_lite/20.1/quartus/bin:$PATH
+export PATH=/home/miguel/altera/13.0sp1/quartus/bin:$PATH
 cd /home/miguel/verilog/quartus
 quartus_sh -t setup_project.tcl
 ```
 
-### 2.2 Limitação de ambiente encontrada (testei antes de escrever isto)
-
-Tentei rodar a síntese de verdade (`quartus_map cache_pi4`) e ela
-**falha nesta máquina**, não por causa do RTL, mas porque:
-
-1. **Nenhum pacote de suporte de dispositivo está instalado** — o
-   diretório `/home/miguel/intelFPGA_lite/20.1/devdata` está
-   **vazio**. O Quartus Prime aqui instalado é só o software base;
-   nenhuma família de FPGA (nem Cyclone III, nem nenhuma outra) tem
-   os dados de dispositivo necessários pra `quartus_map` rodar.
-   Confirmei isso tentando tanto `Cyclone III` (o alvo real) quanto
-   `Cyclone IV E` (uma família mais nova, só pra teste) — as duas
-   falham com o mesmo erro (`Error (20004)`).
-2. **Mesmo com o pacote de dispositivo certo instalado, o Quartus
-   Prime 20.1 (esta versão) NÃO suporta Cyclone III** — a Intel
-   descontinuou essa família a partir do Quartus Prime (~18.x em
-   diante). O EP3C25F324C6 exige o **Quartus II legado** (até a
-   versão 13.0sp1, "Web Edition", que ainda é a que suporta
-   Cyclone III/II e séries mais antigas).
-
-Ou seja: **o projeto e o RTL estão prontos**, mas rodar a síntese de
-verdade pro chip alvo (EP3C25F324C6) requer instalar outra ferramenta
-(Quartus II 13.0sp1), não é algo que dá pra resolver só com o que já
-está instalado aqui.
-
-### 2.3 Como prosseguir (duas opções)
-
-**Opção A — instalar o Quartus II 13.0sp1 (recomendado, é o alvo real do projeto)**
-
-Baixe o "Quartus II Web Edition 13.0sp1" no site de downloads legados
-da Intel/Altera (procure por "Quartus II 13.0 Service Pack 1
-Downloads" — inclui o pacote de dispositivos Cyclone III como parte do
-instalador Web Edition, ou como device pack separado). Depois de
-instalado:
+**Síntese real, testada e funcionando** (0 erros, só warnings
+esperados/benignos — pinos não usados na config pequena de validação
+etc.) para os 8 módulos, um de cada vez como `TOP_LEVEL_ENTITY`:
 
 ```bash
-export PATH=<caminho-do-quartus-ii-13.0sp1>/quartus/bin:$PATH
+export PATH=/home/miguel/altera/13.0sp1/quartus/bin:$PATH
 cd /home/miguel/verilog/quartus
-quartus_sh -t setup_project.tcl   # recria o projeto com essa toolchain
-quartus_map cache_pi4              # Analysis & Synthesis
-quartus_fit cache_pi4              # Fitter (place & route)
-quartus_asm cache_pi4              # Assembler (gera o .sof/.pof)
-quartus_sta cache_pi4              # Timing Analysis (Fmax real)
+quartus_map cache_pi4
 ```
 
-Ou, na GUI: `File > Open Project > cache_pi4.qpf`, depois
+Pra compilação completa (síntese + fitter + assembler + timing, gera
+o `.sof` de programação e o relatório de Fmax real):
+
+```bash
+quartus_map cache_pi4
+quartus_fit cache_pi4
+quartus_asm cache_pi4
+quartus_sta cache_pi4
+```
+
+Ou, na GUI: `export PATH=...` como acima, depois `quartus` (abre a
+GUI do Quartus II), `File > Open Project > cache_pi4.qpf`,
 `Processing > Start Compilation`.
 
-**Opção B — validar só a sintetizabilidade agora, com uma família suportada nesta máquina**
+### 2.3 Como o RTL virou compatível com essa toolchain legada
 
-Se você só quer confirmar que o RTL sintetiza sem erro (sem se
-importar com área/Fmax reais do Cyclone III ainda), instale o pacote
-de dispositivo de uma família suportada pelo Quartus Prime 20.1 (ex.
-Cyclone IV E) via `Tools > Install Devices` na GUI, ou o instalador
-offline de dispositivos da Intel. Depois edite as 2 linhas de família/
-dispositivo em `quartus/setup_project.tcl` (já tem um comentário lá
-indicando onde) e rode os mesmos comandos da Opção A.
+Todo módulo original usava porta ANSI-style com `localparam` derivado
+dentro da lista de parâmetros — sintaxe que o Quartus Prime aceita mas
+o Quartus II 13.0sp1 rejeita (`Error (10170)`). Os 8 arquivos de
+`rtl/*.v` foram convertidos pro estilo Verilog-1995/2001 não-ANSI
+(parâmetros só com `parameter` de verdade na lista `#(...)`,
+`localparam`s derivados e declaração de porta movidos pro corpo do
+módulo) — refactor puramente sintático, sem mudança de comportamento,
+revisado pelo rtl-analyst e com não-regressão confirmada contra toda a
+suíte de testbenches. Ver commit "Adapta RTL pra compatibilidade com
+Quartus II 13.0sp1" no histórico do git.
+
+### 2.4 Instalação (caso precise reinstalar ou reproduzir em outra máquina)
+
+Instalado localmente (sem sudo) em `/home/miguel/altera/13.0sp1/`
+(~14GB), a partir dos instaladores baixados manualmente da Intel/
+Altera (EULA exige sessão de navegador, não dá pra automatizar):
+`QuartusSetupWeb-13.0.1.232.run` (instalador principal) +
+`cyclone_web-13.0.1.232.qdz` (device pack Cyclone II/III/IV, precisa
+estar na MESMA pasta do `.run` — o instalador detecta e aplica
+automaticamente). Comando usado:
+
+```bash
+chmod +x QuartusSetupWeb-13.0.1.232.run
+./QuartusSetupWeb-13.0.1.232.run --mode unattended --unattendedmodeui minimal --installdir /home/miguel/altera/13.0sp1
+```
+
+Nesta máquina a arquitetura i386 já estava habilitada (provável
+resquício da instalação do ModelSim/Questa moderno), então não foi
+necessário `sudo dpkg --add-architecture i386` nem instalar libs de
+compatibilidade adicionais (`libpng12` etc.) — o instalador e o
+`quartus_map` rodaram direto. Se isso NÃO funcionar em outra máquina,
+o procedimento de referência completo (com os passos de libpng12/
+libtbb pra Ubuntu mais recente) está em
+https://gist.github.com/bkw777/a6a2888f482802f2e520165858268cd3.
 
 ### 2.4 Trocando qual módulo é o topo da síntese
 
@@ -226,8 +241,9 @@ eu crie esse módulo.
 
 - **ModelSim**: funciona 100% nesta máquina, todos os ~33 testbenches
   já rodam PASS. Use a tabela da seção 1.3 ou o loop da seção 1.4.
-- **Quartus**: projeto pronto (`quartus/cache_pi4.qpf`), mas a síntese
-  de verdade pro chip alvo (Cyclone III EP3C25F324C6) exige instalar o
-  Quartus II 13.0sp1 (legado) — o Quartus Prime 20.1 instalado aqui
-  não tem NENHUM pacote de dispositivo instalado, e mesmo instalando
-  um, não suporta mais Cyclone III.
+- **Quartus**: **funciona 100% nesta máquina**, usando o Quartus II
+  13.0sp1 (legado, `/home/miguel/altera/13.0sp1/quartus/bin`) — a
+  única toolchain que ainda suporta o chip alvo real (Cyclone III
+  EP3C25F324C6). Os 8 módulos de `rtl/*.v` sintetizam com 0 erros. O
+  Quartus Prime 20.1 moderno (`/home/miguel/intelFPGA_lite/`) fica só
+  como referência — não suporta mais Cyclone III.
